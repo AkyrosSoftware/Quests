@@ -82,6 +82,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import me.pikamug.expansions.QuestsExpansion;
 
 public class BukkitQuestsPlugin extends JavaPlugin implements Quests {
 
@@ -257,6 +258,11 @@ public class BukkitQuestsPlugin extends JavaPlugin implements Quests {
 
         // 13 - Delay loading of quests, actions and modules
         delayLoadQuestInfo();
+        
+        // 14 - Load internal PAPI Expansions
+        if(Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")){
+            new QuestsExpansion(this).register();
+        }
     }
 
     @Override
