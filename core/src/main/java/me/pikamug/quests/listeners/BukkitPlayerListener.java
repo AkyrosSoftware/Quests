@@ -21,7 +21,6 @@ import me.pikamug.quests.util.BukkitItemUtil;
 import me.pikamug.quests.util.BukkitLang;
 import me.pikamug.quests.util.BukkitMiscUtil;
 import me.pikamug.quests.util.BukkitUpdateChecker;
-import net.citizensnpcs.api.CitizensAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -389,7 +388,7 @@ public class BukkitPlayerListener implements Listener {
                                         } else {
                                             if (quester.getCompletedQuests().contains(bukkitQuest)) {
                                                 if (bukkitQuest.getPlanner().getCooldown() > -1
-                                                        && (quester.getRemainingCooldown(bukkitQuest)) > 0) {
+                                                        && quester.getRemainingCooldown(bukkitQuest) > 0) {
                                                     String early = BukkitLang.get(player, "questTooEarly");
                                                     early = early.replace("<quest>", bukkitQuest.getName());
                                                     early = early.replace("<time>", BukkitMiscUtil.getTime(
@@ -698,7 +697,7 @@ public class BukkitPlayerListener implements Listener {
             return;
         }
         if (damager instanceof Player) {
-            if (plugin.getDependencies().getCitizens() != null && CitizensAPI.getNPCRegistry().isNPC(target)) {
+            if (plugin.getDependencies().isNpc(target)) {
                 return;
             }
             final Quester quester = plugin.getQuester(damager.getUniqueId());
@@ -792,10 +791,8 @@ public class BukkitPlayerListener implements Listener {
             return;
         }
         if (damager instanceof Player && target instanceof Player) {
-            if (plugin.getDependencies().getCitizens() != null) {
-                if (CitizensAPI.getNPCRegistry().isNPC(damager) && CitizensAPI.getNPCRegistry().isNPC(target)) {
-                    return;
-                }
+            if (plugin.getDependencies().isNpc(damager) && plugin.getDependencies().isNpc(target)) {
+                return;
             }
             final Quester quester = plugin.getQuester(damager.getUniqueId());
             final ObjectiveType type = ObjectiveType.KILL_PLAYER;
@@ -910,6 +907,38 @@ public class BukkitPlayerListener implements Listener {
                         }
                     }
                     plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                        boolean alreadyHasAtLeastOneGlobalQuest = false;
+                        for (final Quest cq : quester.getCurrentQuests().keySet()) {
+                            if (cq.getOptions().canGiveGloballyAtLogin()) {
+                                alreadyHasAtLeastOneGlobalQuest = true;
+                                break;
+                            }
+                        }
+                        for (final Quest quest : plugin.getLoadedQuests()) {
+                            if (quest.getOptions().canGiveGloballyAtLogin()) {
+                                if (quester.getCurrentQuests().containsKey(quest)) {
+                                    continue;
+                                }
+                                if (quester.getCompletedQuests().contains(quest) && quest.getPlanner().getCooldown() < 0) {
+                                    if (plugin.getConfigSettings().getConsoleLogging() > 3) {
+                                        plugin.getLogger().info(quester.getUUID() + " ignored global quest ID "
+                                                + quest.getId() + " because it was already completed");
+                                    }
+                                    continue;
+                                }
+                                if (!quest.getOptions().canAllowStackingGlobal() && alreadyHasAtLeastOneGlobalQuest) {
+                                    if (plugin.getConfigSettings().getConsoleLogging() > 3) {
+                                        plugin.getLogger().info(quester.getUUID() + " denied global quest ID "
+                                                + quest.getId() + " because it was not stackable");
+                                    }
+                                    continue;
+                                }
+                                if (quester.canAcceptOffer(quest, quest.getOptions().canInformOnStart())) {
+                                    alreadyHasAtLeastOneGlobalQuest = true;
+                                    quester.takeQuest(quest, false);
+                                }
+                            }
+                        }
                         if (quester.hasJournal()) {
                             quester.updateJournal();
                         }
@@ -968,10 +997,8 @@ public class BukkitPlayerListener implements Listener {
         if (event.getFrom().getBlock().equals(event.getTo().getBlock())) {
             return;
         }
-        if (plugin.getDependencies().getCitizens() != null) {
-            if (CitizensAPI.getNPCRegistry().isNPC(event.getPlayer())) {
-                return;
-            }
+        if (plugin.getDependencies().isNpc(event.getPlayer())) {
+            return;
         }
         playerMove(event.getPlayer().getUniqueId(), event.getTo());
     }

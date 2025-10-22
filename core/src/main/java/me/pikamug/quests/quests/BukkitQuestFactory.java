@@ -16,18 +16,9 @@ import me.pikamug.quests.convo.quests.menu.QuestMenuPrompt;
 import me.pikamug.quests.convo.quests.stages.QuestStageMenuPrompt;
 import me.pikamug.quests.interfaces.ReloadCallback;
 import me.pikamug.quests.module.CustomObjective;
-import me.pikamug.quests.quests.components.BukkitStage;
-import me.pikamug.quests.quests.components.Options;
-import me.pikamug.quests.quests.components.Planner;
-import me.pikamug.quests.quests.components.Requirements;
-import me.pikamug.quests.quests.components.Rewards;
-import me.pikamug.quests.quests.components.Stage;
+import me.pikamug.quests.quests.components.*;
+import me.pikamug.quests.util.*;
 import me.pikamug.quests.util.stack.BlockItemStack;
-import me.pikamug.quests.util.BukkitConfigUtil;
-import me.pikamug.quests.util.BukkitFakeConversable;
-import me.pikamug.quests.util.BukkitLang;
-import me.pikamug.quests.util.BukkitMiscUtil;
-import me.pikamug.quests.util.Key;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
@@ -36,12 +27,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.conversations.ConversationAbandonedEvent;
-import org.bukkit.conversations.ConversationAbandonedListener;
-import org.bukkit.conversations.ConversationContext;
-import org.bukkit.conversations.ConversationFactory;
-import org.bukkit.conversations.ConversationPrefix;
-import org.bukkit.conversations.Prompt;
+import org.bukkit.conversations.*;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -50,13 +36,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -159,9 +140,7 @@ public class BukkitQuestFactory implements QuestFactory, ConversationAbandonedLi
             context.setSessionData(Key.Q_NAME, bukkitQuest.getName());
             context.setSessionData(Key.Q_ASK_MESSAGE, bukkitQuest.getDescription());
             context.setSessionData(Key.Q_FINISH_MESSAGE, bukkitQuest.getFinished());
-            if (plugin.getDependencies().getCitizens() != null
-                    || plugin.getDependencies().getZnpcsPlus() != null
-                    || plugin.getDependencies().getZnpcsPlusApi() != null) {
+            if (plugin.getDependencies().hasAnyNpcDependencies()) {
                 if (bukkitQuest.getNpcStart() != null) {
                     context.setSessionData(Key.Q_START_NPC, bukkitQuest.getNpcStart().toString());
                 }
@@ -293,6 +272,9 @@ public class BukkitQuestFactory implements QuestFactory, ConversationAbandonedLi
             context.setSessionData(Key.OPT_SHARE_DISTANCE, opt.getShareDistance());
             context.setSessionData(Key.OPT_HANDLE_OFFLINE_PLAYERS, opt.canHandleOfflinePlayers());
             context.setSessionData(Key.OPT_IGNORE_BLOCK_REPLACE, opt.canIgnoreBlockReplace());
+            context.setSessionData(Key.OPT_GIVE_GLOBALLY_AT_LOGIN, opt.canGiveGloballyAtLogin());
+            context.setSessionData(Key.OPT_ALLOW_STACKING_GLOBAL, opt.canAllowStackingGlobal());
+            context.setSessionData(Key.OPT_INFORM_QUEST_START, opt.canInformOnStart());
             // Stages (Objectives)
             int index = 1;
             for (final Stage stage : bukkitQuest.getStages()) {
@@ -553,17 +535,28 @@ public class BukkitQuestFactory implements QuestFactory, ConversationAbandonedLi
                     .replace("<quest>", questsFile.getName()));
             return;
         }
-        final String quest = (String) context.getSessionData(Key.ED_QUEST_DELETE);
-        final ConfigurationSection sec = data.getConfigurationSection("quests");
-        if (sec != null) {
-            for (final String key : sec.getKeys(false)) {
-                if (sec.getString(key + ".name") != null
-                        && Objects.requireNonNull(sec.getString(key + ".name")).equalsIgnoreCase(quest)) {
-                    sec.set(key, null);
-                    break;
+        final String delete = (String) context.getSessionData(Key.ED_QUEST_DELETE);
+        if (delete != null && plugin.getQuest(delete) != null) {
+            final ConfigurationSection sec = data.getConfigurationSection("quests");
+            if (sec != null) {
+                for (final String key : sec.getKeys(false)) {
+                    final String name = sec.getString(key + ".name");
+                    if (name != null && plugin.getQuest(name) != null) {
+                        if (plugin.getQuest(name).getId().equals(plugin.getQuest(delete).getId())) {
+                            sec.set(key, null);
+                            context.getForWhom().sendRawMessage(ChatColor.GREEN + BukkitLang.get("questDeleted"));
+                            if (plugin.getConfigSettings().getConsoleLogging() > 0) {
+                                final String identifier = context.getForWhom() instanceof Player ?
+                                        "Player " + ((Player)context.getForWhom()).getUniqueId() : "CONSOLE";
+                                plugin.getLogger().info(identifier + " deleted quest " + delete);
+                            }
+                            break;
+                        }
+                    }
                 }
             }
         }
+
         try {
             data.save(questsFile);
         } catch (final IOException e) {
@@ -576,26 +569,17 @@ public class BukkitQuestFactory implements QuestFactory, ConversationAbandonedLi
             }
         };
         plugin.reload(callback);
-        context.getForWhom().sendRawMessage(ChatColor.GREEN + BukkitLang.get("questDeleted"));
-        if (plugin.getConfigSettings().getConsoleLogging() > 0) {
-            final String identifier = context.getForWhom() instanceof Player ?
-                    "Player " + ((Player)context.getForWhom()).getUniqueId() : "CONSOLE";
-            plugin.getLogger().info(identifier + " deleted quest " + quest);
-        }
     }
 
     public void saveQuest(final ConversationContext context, final ConfigurationSection section) {
-        String edit = null;
-        if (context.getSessionData(Key.ED_QUEST_EDIT) != null) {
-            edit = (String) context.getSessionData(Key.ED_QUEST_EDIT);
-        }
-        if (edit != null) {
+        final String edit = (String) context.getSessionData(Key.ED_QUEST_EDIT);
+        if (edit != null && plugin.getQuest(edit) != null) {
             final ConfigurationSection questList = section.getParent();
             if (questList != null) {
                 for (final String key : questList.getKeys(false)) {
                     final String name = questList.getString(key + ".name");
-                    if (name != null) {
-                        if (name.equalsIgnoreCase(edit)) {
+                    if (name != null && plugin.getQuest(name) != null) {
+                        if (plugin.getQuest(name).getId().equals(plugin.getQuest(edit).getId())) {
                             questList.set(key, null);
                             break;
                         }
@@ -938,6 +922,14 @@ public class BukkitQuestFactory implements QuestFactory, ConversationAbandonedLi
                 ? context.getSessionData(Key.OPT_HANDLE_OFFLINE_PLAYERS) : null);
         opts.set("ignore-block-replace", context.getSessionData(Key.OPT_IGNORE_BLOCK_REPLACE) != null
                 ? context.getSessionData(Key.OPT_IGNORE_BLOCK_REPLACE) : null);
+        opts.set("give-at-login", context.getSessionData(Key.OPT_GIVE_GLOBALLY_AT_LOGIN) != null
+                ? context.getSessionData(Key.OPT_GIVE_GLOBALLY_AT_LOGIN) : null);
+        opts.set("allow-stacking-global", context.getSessionData(Key.OPT_ALLOW_STACKING_GLOBAL) != null
+                ? context.getSessionData(Key.OPT_ALLOW_STACKING_GLOBAL) : null);
+        opts.set("inform-on-start", context.getSessionData(Key.OPT_INFORM_QUEST_START) != null
+                ? context.getSessionData(Key.OPT_INFORM_QUEST_START) : null);
+        opts.set("override-max-quests", context.getSessionData(Key.OPT_OVERRIDE_MAX_QUESTS) != null
+                ? context.getSessionData(Key.OPT_OVERRIDE_MAX_QUESTS) : null);
         if (opts.getKeys(false).isEmpty()) {
             section.set("options", null);
         }

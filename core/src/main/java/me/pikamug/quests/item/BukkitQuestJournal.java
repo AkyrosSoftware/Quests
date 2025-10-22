@@ -81,7 +81,7 @@ public class BukkitQuestJournal {
                     final String message = "- " + BukkitLang.BukkitFormatToken.convertString(player,
                             objective.getMessage().trim().replaceAll("\\s{2,}", ""));
                     if (!plugin.getConfigSettings().canShowCompletedObjs()
-                            && message.startsWith(ChatColor.GRAY.toString())) {
+                            && objective.getProgress() >= objective.getGoal()) {
                         continue;
                     }
                     String[] split = null;
@@ -91,10 +91,16 @@ public class BukkitQuestJournal {
                         if (objective.getGoalAsBlockItem() != null) {
                             final BlockItemStack goal = objective.getGoalAsBlockItem();
                             if (plugin.getConfigSettings().canTranslateNames()) {
-                                final TranslatableComponent tc = new TranslatableComponent(plugin.getLocaleManager()
-                                        .queryMaterial(goal.getType(), goal.getDurability(), null));
-                                tc.setColor(net.md_5.bungee.api.ChatColor.DARK_AQUA);
-                                builder.add(tc);
+                                try {
+                                    final TranslatableComponent tc = new TranslatableComponent(plugin.getLocaleManager()
+                                            .queryMaterial(goal.getType(), goal.getDurability(), null));
+                                    tc.setColor(net.md_5.bungee.api.ChatColor.DARK_AQUA);
+                                    builder.add(tc);
+                                } catch (final Exception e) {
+                                    builder.add(ChatColor.RED + BukkitItemUtil.getPrettyItemName(goal.getType().name()));
+                                    plugin.getLogger().severe(e.getMessage());
+                                    plugin.getLogger().info("for Quest " + quest.getId() + " " + message);
+                                }
                             } else {
                                 builder.add(ChatColor.AQUA + BukkitItemUtil.getPrettyItemName(goal.getType().name()));
                             }

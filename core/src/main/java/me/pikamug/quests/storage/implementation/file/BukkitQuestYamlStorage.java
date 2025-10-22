@@ -10,25 +10,16 @@ import me.pikamug.quests.exceptions.QuestFormatException;
 import me.pikamug.quests.exceptions.StageFormatException;
 import me.pikamug.quests.quests.BukkitQuest;
 import me.pikamug.quests.quests.Quest;
-import me.pikamug.quests.quests.components.BukkitRequirements;
-import me.pikamug.quests.quests.components.BukkitRewards;
-import me.pikamug.quests.quests.components.BukkitStage;
-import me.pikamug.quests.quests.components.Options;
-import me.pikamug.quests.quests.components.Planner;
+import me.pikamug.quests.quests.components.*;
 import me.pikamug.quests.storage.implementation.QuestStorageImpl;
-import me.pikamug.quests.util.stack.BlockItemStack;
 import me.pikamug.quests.util.BukkitConfigUtil;
 import me.pikamug.quests.util.BukkitItemUtil;
-import me.pikamug.quests.util.BukkitMiscUtil;
 import me.pikamug.quests.util.BukkitLang;
+import me.pikamug.quests.util.BukkitMiscUtil;
+import me.pikamug.quests.util.stack.BlockItemStack;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
-import org.bukkit.ChatColor;
-import org.bukkit.Color;
-import org.bukkit.DyeColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -43,13 +34,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 
 public class BukkitQuestYamlStorage implements QuestStorageImpl {
@@ -177,7 +162,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
             final Collection<UUID> npcUuids = plugin.getQuestNpcUuids();
             npcUuids.add(uuid);
             plugin.setQuestNpcUuids(npcUuids);
-        } else if (depends.getCitizens() != null && config.contains("quests." + questId + ".npc-giver-id")) {
+        } else if (depends.getNpcDependency("Citizens") != null && config.contains("quests." + questId + ".npc-giver-id")) {
             // Legacy
             final int id = config.getInt("quests." + questId + ".npc-giver-id");
             if (CitizensAPI.getNPCRegistry().getById(id) != null) {
@@ -311,8 +296,6 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
                     if (config.contains("quests." + questId + ".options")) {
                         loadQuestOptions(config, quest, questId);
                     }
-                    // TODO was this necessary?
-                    //quest.setPlugin(this);
                     loadQuestStages(quest, config, questId);
                     loadQuestRewards(config, quest, questId);
                     final Collection<Quest> loadedQuests = plugin.getLoadedQuests();
@@ -784,6 +767,18 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
         if (config.contains("quests." + questKey + ".options.ignore-block-replace")) {
             opts.setIgnoreBlockReplace(config.getBoolean("quests." + questKey + ".options.ignore-block-replace"));
         }
+        if (config.contains("quests." + questKey + ".options.give-at-login")) {
+            opts.setGiveGloballyAtLogin(config.getBoolean("quests." + questKey + ".options.give-at-login"));
+        }
+        if (config.contains("quests." + questKey + ".options.allow-stacking-global")) {
+            opts.setAllowStackingGlobal(config.getBoolean("quests." + questKey + ".options.allow-stacking-global"));
+        }
+        if (config.contains("quests." + questKey + ".options.inform-on-start")) {
+            opts.setInformOnStart(config.getBoolean("quests." + questKey + ".options.inform-on-start"));
+        }
+        if (config.contains("quests." + questKey + ".options.override-max-quests")) {
+            opts.setOverrideMaxQuests(config.getBoolean("quests." + questKey + ".options.override-max-quests"));
+        }
     }
 
     @SuppressWarnings({ "unchecked", "unused"})
@@ -799,7 +794,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
             try {
                 stageNum = Integer.parseInt(stageKey);
             } catch (final NumberFormatException e) {
-                plugin.getLogger().severe("Stage key " + stageKey + "must be a number!");
+                plugin.getLogger().severe("Stage key " + stageKey + " must be a number!");
                 continue;
             }
             final BukkitStage bukkitStage = new BukkitStage();
@@ -839,7 +834,13 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
             final List<Integer> npcAmountsToKill;
             final ConfigurationSection obj = config.getConfigurationSection(ordered.getCurrentPath() + "." + stageNum);
             if (obj == null || obj.getKeys(false).isEmpty()) {
-                throw new StageFormatException("Stage cannot be empty", quest, stageNum);
+                // TODO - Determine how some users are able to create empty stages
+                bukkitStage.addPasswordDisplay("2 + 2 = ?");
+                bukkitStage.addPasswordPhrase("4");
+                plugin.getLogger().severe("Stage cannot be empty, see quest " + quest.getName() + " stage " + stageNum);
+                plugin.getLogger().severe("A generic objective has been added for you to prevent future error.");
+                continue;
+                //throw new StageFormatException("Stage cannot be empty", quest, stageNum);
             }
             final String path = obj.getCurrentPath();
             // Legacy Denizen script load
@@ -1218,7 +1219,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
                 if (BukkitConfigUtil.checkList(config.getList(path + ".npc-ids-to-talk-to"), Integer.class)) {
                     npcIdsToTalkTo = config.getIntegerList(path + ".npc-ids-to-talk-to");
                     for (final int i : npcIdsToTalkTo) {
-                        if (plugin.getDependencies().getCitizens() != null) {
+                        if (plugin.getDependencies().getNpcDependency("Citizens") != null) {
                             final NPC npc = CitizensAPI.getNPCRegistry().getById(i);
                             if (npc != null) {
                                 final UUID npcUuid = npc.getUniqueId();
@@ -1253,8 +1254,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
                                 for (final ItemStack stack : itemsToDeliver) {
                                     if (stack != null) {
                                         final UUID npcUuid = UUID.fromString(itemDeliveryTargetUuids.get(index));
-                                        final String msg = deliveryMessages.size() > index
-                                                ? deliveryMessages.get(index)
+                                        final String msg = deliveryMessages.size() > index ? deliveryMessages.get(index)
                                                 : deliveryMessages.get(deliveryMessages.size() - 1);
                                         index++;
                                         bukkitStage.addItemToDeliver(stack);
@@ -1285,7 +1285,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
                                         final String msg = deliveryMessages.size() > index ? deliveryMessages.get(index)
                                                 : deliveryMessages.get(deliveryMessages.size() - 1);
                                         index++;
-                                        if (plugin.getDependencies().getCitizens() != null) {
+                                        if (plugin.getDependencies().getNpcDependency("Citizens") != null) {
                                             final NPC npc = CitizensAPI.getNPCRegistry().getById(npcId);
                                             if (npc != null) {
                                                 bukkitStage.addItemToDeliver(stack);
@@ -1348,7 +1348,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
                             npcIdsToKill = config.getIntegerList(path + ".npc-ids-to-kill");
                             npcAmountsToKill = config.getIntegerList(path + ".npc-kill-amounts");
                             for (final int i : npcIdsToKill) {
-                                if (plugin.getDependencies().getCitizens() != null) {
+                                if (plugin.getDependencies().getNpcDependency("Citizens") != null) {
                                     final NPC npc = CitizensAPI.getNPCRegistry().getById(i);
                                     if (npc != null) {
                                         if (npcAmountsToKill.get(npcIdsToKill.indexOf(i)) > 0) {

@@ -14,12 +14,12 @@ import me.pikamug.quests.BukkitQuestsPlugin;
 import me.pikamug.quests.player.BukkitQuestProgress;
 import me.pikamug.quests.player.BukkitQuester;
 import me.pikamug.quests.player.Quester;
-import me.pikamug.quests.quests.components.BukkitStage;
 import me.pikamug.quests.quests.Quest;
 import me.pikamug.quests.storage.implementation.QuesterStorageImpl;
 import me.pikamug.quests.storage.implementation.sql.connection.ConnectionFactory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -417,7 +417,7 @@ public class BukkitQuesterSqlStorage implements QuesterStorageImpl {
         }
     }
 
-    @Override
+    @Override @Nullable
     public String getQuesterLastKnownName(final UUID uniqueId) throws SQLException {
         try (final Connection c = connectionFactory.getConnection()) {
             try (final PreparedStatement ps = c.prepareStatement(statementProcessor.apply(PLAYER_SELECT_USERNAME))) {
@@ -461,7 +461,6 @@ public class BukkitQuesterSqlStorage implements QuesterStorageImpl {
                         final Quest quest = plugin.getQuestById(rs.getString("quest_id"));
                         final BukkitQuestProgress data = new BukkitQuestProgress(quester);
                         if (quest != null && quester.getCurrentStage(quest) != null) {
-                            final BukkitStage stage = (BukkitStage) quester.getCurrentStage(quest);
                             data.blocksBroken.addAll(deserializeIntProgress(rs.getString("blocks_broken")));
                             data.blocksDamaged.addAll(deserializeIntProgress(rs.getString("blocks_damaged")));
                             data.blocksPlaced.addAll(deserializeIntProgress(rs.getString("blocks_placed")));
@@ -602,6 +601,10 @@ public class BukkitQuesterSqlStorage implements QuesterStorageImpl {
         return list;
     }
 
+    /**
+     * @deprecated Legacy code, do not use. Will be removed in a later version.
+     */
+    @Deprecated
     public String serializeItemStackProgress(final LinkedList<ItemStack> list) {
         if (list.isEmpty()) {
             return null;
@@ -615,7 +618,7 @@ public class BukkitQuesterSqlStorage implements QuesterStorageImpl {
     /**
      * @deprecated Legacy code, do not use. Will be removed in a later version.
      */
-    @SuppressWarnings("deprecation")
+    @Deprecated
     public LinkedList<ItemStack> deserializeItemStackProgress(String string, final LinkedList<ItemStack> objective) {
         final LinkedList<ItemStack> list = new LinkedList<>();
         if (string != null) {
