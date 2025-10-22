@@ -751,7 +751,7 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
     private void loadQuestOptions(final FileConfiguration config, final Quest quest, final String questKey)
             throws QuestFormatException {
         final Options opts = quest.getOptions();
-        if (config.contains("quests." + questKey + ".options.allow-commands")) {
+        if (config.contains("quests." + questKey + ".options. allow-commands")) {
             opts.setAllowCommands(config.getBoolean("quests." + questKey + ".options.allow-commands"));
         }
         if (config.contains("quests." + questKey + ".options.allow-quitting")) {
@@ -783,6 +783,15 @@ public class BukkitQuestYamlStorage implements QuestStorageImpl {
         }
         if (config.contains("quests." + questKey + ".options.ignore-block-replace")) {
             opts.setIgnoreBlockReplace(config.getBoolean("quests." + questKey + ".options.ignore-block-replace"));
+        }
+        if (config.contains("quests." + questKey + ".options.use-random")) {
+            opts.setUseRange(config.getBoolean("quests." + questKey + ".options.use-range"));
+        }
+        if (config.contains("quests." + questKey + ".options.min-value")) {
+            opts.setMinValue(config.getInt("quests." + questKey + ".options.min-value"));
+        }
+        if (config.contains("quests." + questKey + ".options.max-value")) {
+            opts.setMaxValue(config.getInt("quests." + questKey + ".options.max-value"));
         }
     }
 

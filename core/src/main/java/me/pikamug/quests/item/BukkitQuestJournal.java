@@ -81,7 +81,7 @@ public class BukkitQuestJournal {
                     final String message = "- " + BukkitLang.BukkitFormatToken.convertString(player,
                             objective.getMessage().trim().replaceAll("\\s{2,}", ""));
                     if (!plugin.getConfigSettings().canShowCompletedObjs()
-                            && message.startsWith(ChatColor.GRAY.toString())) {
+                            && message.startsWith(ChatColor.GREEN.toString())) {
                         continue;
                     }
                     String[] split = null;
@@ -96,7 +96,7 @@ public class BukkitQuestJournal {
                                 tc.setColor(net.md_5.bungee.api.ChatColor.DARK_AQUA);
                                 builder.add(tc);
                             } else {
-                                builder.add(ChatColor.AQUA + BukkitItemUtil.getPrettyItemName(goal.getType().name()));
+                                builder.add(ChatColor.RED + BukkitItemUtil.getPrettyItemName(goal.getType().name()));
                             }
                         } else if (objective.getGoalAsItem() != null) {
                             final ItemStack goal = objective.getGoalAsItem();
@@ -110,7 +110,7 @@ public class BukkitQuestJournal {
                                     tc.setColor(net.md_5.bungee.api.ChatColor.DARK_AQUA);
                                     builder.add(tc);
                                 } else {
-                                    builder.add(ChatColor.AQUA + BukkitItemUtil.getPrettyItemName(goal.getType().name()));
+                                    builder.add(BukkitItemUtil.getPrettyItemName(goal.getType().name()));
                                 }
                             }
                         }

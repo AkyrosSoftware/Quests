@@ -50,4 +50,10 @@ public interface Options {
     boolean canIgnoreBlockReplace();
 
     void setIgnoreBlockReplace(final boolean ignoreBlockReplace);
+
+    void setUseRange(final boolean useRange);
+
+    void setMinValue(final int minValue);
+
+    void setMaxValue(final int maxValue);
 }

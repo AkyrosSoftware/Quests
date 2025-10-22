@@ -23,7 +23,10 @@ public class BukkitOptions implements Options {
     private int shareProgressLevel = 1;
     private boolean shareSameQuestOnly = true;
     private boolean ignoreBlockReplace = true;
-    
+    private boolean useRange = true;
+    private int minValue = 1;
+    private int maxValue = 1;
+
     public boolean canAllowCommands() {
         return allowCommands;
     }
@@ -102,5 +105,25 @@ public class BukkitOptions implements Options {
 
     public void setIgnoreBlockReplace(final boolean ignoreBlockReplace) {
         this.ignoreBlockReplace = ignoreBlockReplace;
+    }
+
+    public void setUseRange(final boolean useRange) {
+        this.useRange = useRange;
+    }
+
+    public int getMinValue() {
+        return minValue;
+    }
+
+    public void setMinValue(final int minValue) {
+        this.minValue = minValue;
+    }
+
+    public int getMaxValue() {
+        return maxValue;
+    }
+
+    public void setMaxValue(final int maxValue) {
+        this.maxValue = maxValue;
     }
 }

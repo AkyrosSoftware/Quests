@@ -141,15 +141,44 @@ public class QuestsExpansion extends PlaceholderExpansion {
             return plannerPlaceholder;
         }
 
+        final String infoPlaceholder = getInfoPlaceholder(identifier);
+        if (infoPlaceholder != null) {
+            return infoPlaceholder;
+        }
+
+        final String rewardPlaceholder = getRewardPlaceholder(identifier);
+        if (rewardPlaceholder != null) {
+            return rewardPlaceholder;
+        }
+
         return getPlayerPlaceholder(player, identifier);
     }
-    
+
     @Override
     public boolean persist()
     {
         return true;
     }
     
+    private String getInfoPlaceholder(final String identifier) {
+        final Quest quest = matchQuest(identifier.substring(identifier.lastIndexOf("_") + 1));
+        if (identifier.startsWith("info_name_")) {
+            return quest.getName();
+        }
+        if (identifier.startsWith("info_description_")) {
+            return quest.getDescription();
+        }
+        return null;
+    }
+
+    private String getRewardPlaceholder(final String identifier) {
+        final Quest quest = matchQuest(identifier.substring(identifier.lastIndexOf("_") + 1));
+        if (identifier.startsWith("reward_money_")) {
+            return String.valueOf(quest.getRewards().getMoney());
+        }
+        return null;
+    }
+
     private String getPlannerPlaceholder(final String identifier) {
         final Quest quest = matchQuest(identifier.substring(identifier.lastIndexOf("_") + 1));
         if (identifier.startsWith("planner_start_time_")) {

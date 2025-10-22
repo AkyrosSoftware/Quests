@@ -643,7 +643,7 @@ public class BukkitItemUtil {
             final BookMeta bookMeta = (BookMeta) is.getItemMeta();
             text = "" + ChatColor.DARK_AQUA + ChatColor.LIGHT_PURPLE + bookMeta.getTitle();
         } else {
-            text = ChatColor.AQUA + getPrettyItemName(is.getType().name());
+            text = getPrettyItemName(is.getType().name());
         }
         return text;
     }

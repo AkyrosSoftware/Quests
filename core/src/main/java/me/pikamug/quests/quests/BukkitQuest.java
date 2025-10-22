@@ -757,7 +757,8 @@ public class BukkitQuest implements Quest {
             final Player p = (Player)player;
             final String[] ps = BukkitConfigUtil.parseStringWithPossibleLineBreaks(ChatColor.AQUA
                     + finished, this, p);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> p.sendMessage(ps), 40);
+            if (!finished.contains("none"))
+                Bukkit.getScheduler().runTaskLater(plugin, () -> p.sendMessage(ps), 40);
         }
         if (planner.getCooldown() > -1) {
             quester.getCompletedTimes().put(this, System.currentTimeMillis());
@@ -925,21 +926,17 @@ public class BukkitQuest implements Quest {
                 p.sendMessage(ChatColor.GRAY + "- (" + BukkitLang.get("none") + ")");
             } else if (!rewards.getDetailsOverride().isEmpty()) {
                 for (final String s: rewards.getDetailsOverride()) {
-                    String message = ChatColor.DARK_GREEN + BukkitConfigUtil.parseString(
+                    String message = ChatColor.GREEN + BukkitConfigUtil.parseString(
                             ChatColor.translateAlternateColorCodes('&', s));
                     if (plugin.getDependencies().getPlaceholderApi() != null) {
                         message = PlaceholderAPI.setPlaceholders(p, message);
                     }
-                    quester.sendMessage("- " + message);
+                    quester.sendMessage("+ " + message);
                 }
             } else {
                 if (rewards.getExp() > 0) {
-                    quester.sendMessage("- " + ChatColor.DARK_GREEN + rewards.getExp() + " "
+                    quester.sendMessage("+ " + ChatColor.DARK_GREEN + rewards.getExp() + " "
                             + BukkitLang.get(p, "experience"));
-                }
-                if (rewards.getQuestPoints() > 0) {
-                    quester.sendMessage("- " + ChatColor.DARK_GREEN + rewards.getQuestPoints() + " "
-                            + BukkitLang.get(p, "questPoints"));
                 }
                 for (final ItemStack i : rewards.getItems()) {
                     StringBuilder text;
@@ -963,7 +960,7 @@ public class BukkitQuest implements Quest {
                             text.append(ChatColor.GRAY).append(" x ").append(i.getAmount());
                         }
                     } else if (i.getDurability() != 0) {
-                        text = new StringBuilder("- " + ChatColor.DARK_GREEN + "<item>:" + i.getDurability());
+                        text = new StringBuilder("+ " + ChatColor.DARK_GREEN + "<item>:" + i.getDurability());
                         if (!i.getEnchantments().isEmpty()) {
                             text.append(ChatColor.GRAY).append(" ").append(BukkitLang.get(p, "with"));
                             for (int iz = 0; iz < i.getEnchantments().size(); iz++) {
@@ -972,7 +969,7 @@ public class BukkitQuest implements Quest {
                         }
                         text.append(ChatColor.GRAY).append(" x ").append(i.getAmount());
                     } else {
-                        text = new StringBuilder("- " + ChatColor.DARK_GREEN + "<item>");
+                        text = new StringBuilder("+ " + ChatColor.DARK_GREEN + "<item>");
                         if (!i.getEnchantments().isEmpty()) {
                             try {
                                 if (!i.getItemMeta().hasItemFlag(ItemFlag.HIDE_ENCHANTS)) {
@@ -1007,32 +1004,17 @@ public class BukkitQuest implements Quest {
                     }
                 }
                 if (rewards.getMoney() > 0 && depends.getVaultEconomy() != null) {
-                    quester.sendMessage("- " + ChatColor.DARK_GREEN
+                    quester.sendMessage("+ " + ChatColor.DARK_GREEN
                             + depends.getVaultEconomy().format(rewards.getMoney()));
-                }
-                if (!rewards.getCommands().isEmpty()) {
-                    int index = 0;
-                    for (final String s : rewards.getCommands()) {
-                        if (!rewards.getCommandsOverrideDisplay().isEmpty()
-                                && rewards.getCommandsOverrideDisplay().size() > index) {
-                            if (!rewards.getCommandsOverrideDisplay().get(index).trim().isEmpty()) {
-                                quester.sendMessage("- " + ChatColor.DARK_GREEN
-                                        + rewards.getCommandsOverrideDisplay().get(index));
-                            }
-                        } else {
-                            quester.sendMessage("- " + ChatColor.DARK_GREEN + s);
-                        }
-                        index++;
-                    }
                 }
                 if (!rewards.getPermissions().isEmpty()) {
                     int index = 0;
                     for (final String s : rewards.getPermissions()) {
                         if (rewards.getPermissionWorlds() != null && rewards.getPermissionWorlds().size() > index) {
-                            quester.sendMessage("- " + ChatColor.DARK_GREEN + s + " ("
+                            quester.sendMessage("+ " + ChatColor.DARK_GREEN + s + " ("
                                     + rewards.getPermissionWorlds().get(index) + ")");
                         } else {
-                            quester.sendMessage("- " + ChatColor.DARK_GREEN + s);
+                            quester.sendMessage("+ " + ChatColor.DARK_GREEN + s);
                             
                         }
                         index++;
@@ -1040,7 +1022,7 @@ public class BukkitQuest implements Quest {
                 }
                 if (!rewards.getMcmmoSkills().isEmpty()) {
                     for (final String s : rewards.getMcmmoSkills()) {
-                        quester.sendMessage("- " + ChatColor.DARK_GREEN
+                        quester.sendMessage("+ " + ChatColor.DARK_GREEN
                                 + rewards.getMcmmoAmounts().get(rewards.getMcmmoSkills().indexOf(s)) + " "
                                 + ChatColor.DARK_PURPLE + s + " " + BukkitLang.get(p, "experience"));
                     }
@@ -1053,7 +1035,7 @@ public class BukkitQuest implements Quest {
                     }
                 }
                 if (rewards.getPartiesExperience() > 0) {
-                    p.sendMessage("- " + ChatColor.DARK_GREEN + rewards.getPartiesExperience() + ChatColor.DARK_PURPLE
+                    p.sendMessage("+ " + ChatColor.DARK_GREEN + rewards.getPartiesExperience() + ChatColor.DARK_PURPLE
                             + " " + BukkitLang.get(p, "partiesExperience"));
                 }
                 for (final String s : rewards.getCustomRewards().keySet()) {
